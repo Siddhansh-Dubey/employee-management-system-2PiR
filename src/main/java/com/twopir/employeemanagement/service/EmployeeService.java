@@ -3,6 +3,7 @@ package com.twopir.employeemanagement.service;
 import com.twopir.employeemanagement.dto.EmployeeRequest;
 import com.twopir.employeemanagement.dto.EmployeeResponse;
 import com.twopir.employeemanagement.entity.Employee;
+import com.twopir.employeemanagement.exception.DuplicateEmailException;
 import com.twopir.employeemanagement.exception.EmployeeNotFoundException;
 import com.twopir.employeemanagement.repository.EmployeeRepository;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,9 @@ public class EmployeeService {
     }
 
     public EmployeeResponse createEmployee(EmployeeRequest request) {
+        if (employeeRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateEmailException(request.getEmail());
+        }
         Employee employee = mapToEntity(request);
         Employee saved = employeeRepository.save(employee);
         return EmployeeResponse.fromEntity(saved);
@@ -41,6 +45,11 @@ public class EmployeeService {
 
     public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
         Employee employee = findEmployeeOrThrow(id);
+        
+        if (employeeRepository.existsByEmailAndIdNot(request.getEmail(), id)) {
+            throw new DuplicateEmailException(request.getEmail());
+        }
+
         employee.setName(request.getName());
         employee.setEmail(request.getEmail());
         employee.setDepartment(request.getDepartment());

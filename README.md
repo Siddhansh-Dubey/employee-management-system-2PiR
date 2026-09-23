@@ -42,7 +42,7 @@ src/main/java/com/twopir/employeemanagement/
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Siddhansh-Dubey/employee-management-system-2PiR
 cd employee-management-system-2PiR
 
 # Run the application
@@ -51,12 +51,21 @@ cd employee-management-system-2PiR
 # The application starts at http://localhost:8080
 ```
 
-On Windows, use `mvnw.cmd` instead of `./mvnw`.
+On Windows:
+```cmd
+.\mvnw.cmd spring-boot:run
+```
 
 ## How to Run Tests
 
+On Unix/macOS:
 ```bash
 ./mvnw clean test
+```
+
+On Windows:
+```cmd
+.\mvnw.cmd clean test
 ```
 
 ## API Endpoints
@@ -72,20 +81,24 @@ On Windows, use `mvnw.cmd` instead of `./mvnw`.
 
 ### Pagination Parameters (GET /api/employees)
 
-| Parameter | Default | Description          |
-|-----------|---------|----------------------|
-| `page`    | 0       | Page number (0-based)|
-| `size`    | 10      | Page size            |
-| `sortBy`  | id      | Sort field           |
-| `sortDir` | asc     | Sort direction (asc/desc) |
+| Parameter | Default | Description | Validation |
+|-----------|---------|-------------|------------|
+| `page`    | 0       | Page number | Must be >= 0 |
+| `size`    | 10      | Page size   | Must be between 1 and 100 |
+| `sortBy`  | id      | Sort field  | Must be one of: `id`, `name`, `email`, `department`, `salary`, `status` |
+| `sortDir` | asc     | Direction   | Must be `asc` or `desc` |
+
+*Note: Invalid pagination or sorting parameters will return a `400 Bad Request`.*
 
 ### Search Parameters (GET /api/employees/search)
 
-| Parameter | Required | Description                         |
-|-----------|----------|-------------------------------------|
-| `name`    | Yes      | Partial name match (case-insensitive)|
-| `page`    | No       | Page number (default: 0)            |
-| `size`    | No       | Page size (default: 10)             |
+| Parameter | Required | Description | Validation |
+|-----------|----------|-------------|------------|
+| `name`    | Yes      | Name match  | Cannot be blank or whitespace-only |
+| `page`    | No       | Page number | Must be >= 0 (default: 0) |
+| `size`    | No       | Page size   | Must be between 1 and 100 (default: 10) |
+
+*Note: Blank search names will return a `400 Bad Request`.*
 
 ## Example Request/Response
 
@@ -200,6 +213,21 @@ curl http://localhost:8080/api/employees/999
   "timestamp": "2026-09-23T14:30:00"
 }
 ```
+
+### Duplicate Email Example
+
+If you attempt to create or update an employee with an email that is already in use by another employee:
+
+**Response (409 Conflict):**
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "Employee with email already exists: john.doe@example.com",
+  "timestamp": "2026-09-23T14:30:00"
+}
+```
+*Note: During an update, an employee can retain their own existing email without triggering this error.*
 
 ## H2 Database Console
 

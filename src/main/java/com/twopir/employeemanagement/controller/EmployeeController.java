@@ -2,7 +2,9 @@ package com.twopir.employeemanagement.controller;
 
 import com.twopir.employeemanagement.dto.EmployeeRequest;
 import com.twopir.employeemanagement.dto.EmployeeResponse;
+import com.twopir.employeemanagement.exception.InvalidRequestException;
 import com.twopir.employeemanagement.service.EmployeeService;
+import java.util.Set;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("id", "name", "email", "department", "salary", "status");
 
     public EmployeeController(EmployeeService employeeService) {
         this.employeeService = employeeService;
@@ -49,6 +53,22 @@ public class EmployeeController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
 
+        if (page < 0) {
+            throw new InvalidRequestException("Page index must not be less than zero");
+        }
+        if (size < 1) {
+            throw new InvalidRequestException("Page size must not be less than one");
+        }
+        if (size > 100) {
+            throw new InvalidRequestException("Page size must not exceed 100");
+        }
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new InvalidRequestException("Invalid sort field: " + sortBy);
+        }
+        if (!sortDir.equalsIgnoreCase("asc") && !sortDir.equalsIgnoreCase("desc")) {
+            throw new InvalidRequestException("Invalid sort direction: " + sortDir);
+        }
+
         Sort sort = sortDir.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
@@ -64,8 +84,21 @@ public class EmployeeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
+        if (name == null || name.trim().isEmpty()) {
+            throw new InvalidRequestException("Search name must not be blank");
+        }
+        if (page < 0) {
+            throw new InvalidRequestException("Page index must not be less than zero");
+        }
+        if (size < 1) {
+            throw new InvalidRequestException("Page size must not be less than one");
+        }
+        if (size > 100) {
+            throw new InvalidRequestException("Page size must not exceed 100");
+        }
+
         Pageable pageable = PageRequest.of(page, size);
-        Page<EmployeeResponse> employees = employeeService.searchEmployeesByName(name, pageable);
+        Page<EmployeeResponse> employees = employeeService.searchEmployeesByName(name.trim(), pageable);
         return ResponseEntity.ok(employees);
     }
 

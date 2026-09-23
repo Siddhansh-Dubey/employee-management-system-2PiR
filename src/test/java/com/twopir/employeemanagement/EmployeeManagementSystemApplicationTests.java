@@ -250,6 +250,115 @@ class EmployeeManagementSystemApplicationTests {
                 .andExpect(jsonPath("$.content", hasSize(0)));
     }
 
+    @Test
+    void searchEmployees_blankName_returns400() throws Exception {
+        mockMvc.perform(get("/api/employees/search")
+                        .param("name", ""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Search name must not be blank"));
+    }
+
+    @Test
+    void searchEmployees_whitespaceName_returns400() throws Exception {
+        mockMvc.perform(get("/api/employees/search")
+                        .param("name", "   "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Search name must not be blank"));
+    }
+
+    // --- Pagination & Sorting Validation ---
+
+    @Test
+    void getAllEmployees_invalidPage_returns400() throws Exception {
+        mockMvc.perform(get("/api/employees")
+                        .param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Page index must not be less than zero"));
+    }
+
+    @Test
+    void getAllEmployees_invalidSizeZero_returns400() throws Exception {
+        mockMvc.perform(get("/api/employees")
+                        .param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Page size must not be less than one"));
+    }
+
+    @Test
+    void getAllEmployees_invalidSizeTooLarge_returns400() throws Exception {
+        mockMvc.perform(get("/api/employees")
+                        .param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Page size must not exceed 100"));
+    }
+
+    @Test
+    void getAllEmployees_invalidSortBy_returns400() throws Exception {
+        mockMvc.perform(get("/api/employees")
+                        .param("sortBy", "invalidField"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid sort field: invalidField"));
+    }
+
+    @Test
+    void getAllEmployees_invalidSortDir_returns400() throws Exception {
+        mockMvc.perform(get("/api/employees")
+                        .param("sortDir", "invalidDir"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid sort direction: invalidDir"));
+    }
+
+    // --- Duplicate Email ---
+
+    @Test
+    void createEmployee_duplicateEmail_returns409() throws Exception {
+        createSampleEmployee(); // creates jane@example.com
+
+        EmployeeRequest request = new EmployeeRequest(
+                "Jane Copy", "jane@example.com", "Marketing",
+                new BigDecimal("80000.00"), EmployeeStatus.ACTIVE
+        );
+
+        mockMvc.perform(post("/api/employees")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Employee with email already exists: jane@example.com"));
+    }
+
+    @Test
+    void updateEmployee_duplicateEmail_returns409() throws Exception {
+        String id1 = createSampleEmployee(); // creates jane@example.com
+        String id2 = createEmployeeWithEmail("john@example.com", "John Doe");
+
+        EmployeeRequest updateRequest = new EmployeeRequest(
+                "John Doe", "jane@example.com", "Engineering",
+                new BigDecimal("75000.00"), EmployeeStatus.ACTIVE
+        );
+
+        mockMvc.perform(put("/api/employees/" + id2)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Employee with email already exists: jane@example.com"));
+    }
+
+    @Test
+    void updateEmployee_sameEmail_returns200() throws Exception {
+        String id = createSampleEmployee(); // creates jane@example.com
+
+        EmployeeRequest updateRequest = new EmployeeRequest(
+                "Jane Updated", "jane@example.com", "Marketing",
+                new BigDecimal("85000.00"), EmployeeStatus.ACTIVE
+        );
+
+        mockMvc.perform(put("/api/employees/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name", is("Jane Updated")));
+    }
+
     // --- Helper methods ---
 
     private String createSampleEmployee() throws Exception {
